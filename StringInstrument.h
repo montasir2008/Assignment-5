@@ -1,3 +1,12 @@
+/*
+ * File: StringInstrument.h
+ * --------------------------
+ * Name: Montasir Mahir & Weija Li
+ * Course: CS106B
+ * Section: Thu 7:30 pm
+ * Description: This file is the prototype for a stringInstrument class. It
+ * has an arrary of samples, a length, and a cursor.
+ */
 #pragma once
 
 #include "GUI/SimpleTest.h"

@@ -18,7 +18,6 @@ Q5: When the waveform array is first created, all of its elements are initialize
 In this case, the array size is 8.
 
 Q6: After calling nextSample four times, the waveform array contains:
-
 [0.04975, 0.04975, 0.04975, 0, -0.05, -0.05, -0.05, -0.05]
 
 Q7: This would increase the amplitude by 5 times while keeping the frequency and shape of the wave unchanged.

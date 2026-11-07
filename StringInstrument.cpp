@@ -1,8 +1,25 @@
+/*
+ * File: StringInstrument.cpp
+ * --------------------------
+ * Name: Montasir Mahir & Weija Li
+ * Course: CS106B
+ * Section: Thu 7:30 pm
+ * Description: This file implements a plucked string instrument using the
+ * Karplus-Strong algorithm. The string is stored as an array of samples
+ * that is plucked into a square wave and then repeatedly averaged and
+ * dampened, so the sound fades out like a real string.
+ */
 #include "Demos/AudioSystem.h"
 #include "StringInstrument.h"
 #include "error.h"
 using namespace std;
 
+/*
+ * This constructor creates a silent string that vibrates at the given
+ * frequency. The waveform length is the sample rate divided by the frequency
+ * (rounded down), and every sample starts at zero. It reports an error if the
+ * frequency is not positive or would give a waveform shorter than two samples.
+ */
 StringInstrument::StringInstrument(double frequency) {
     if (frequency <= 0 || AudioSystem::sampleRate() / frequency <= 1) error("The frequency is invalid");
     _length = AudioSystem::sampleRate() / frequency;
@@ -10,10 +27,18 @@ StringInstrument::StringInstrument(double frequency) {
     _cursor = 0;
 }
 
+/*
+ * This destructor frees the dynamically allocated waveform array.
+ */
 StringInstrument::~StringInstrument() {
     delete[] _waveform;
 }
 
+/*
+ * This function plucks the string by filling the first half of the waveform
+ * with +0.05 and the second half with -0.05, overwriting whatever was there
+ * before. It also resets the cursor to the start of the waveform.
+ */
 void StringInstrument::pluck() {
     for (int i = 0; i < _length; i++) {
         if (i < _length/2) _waveform[i] = 0.05;
@@ -22,11 +47,18 @@ void StringInstrument::pluck() {
     _cursor = 0;
 }
 
+/*
+ * This function returns the current sample and advances the cursor,
+ * wrapping around to the start at the end of the array. The sample just
+ * played is replaced by the average of itself and the next sample, scaled
+ * by 0.995, which smooths and slowly dampens the waveform over time.
+ */
 Sample StringInstrument::nextSample() {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    return 0;
+    Sample current = _waveform[_cursor];
+    int prev = _cursor;
+    _cursor = (_cursor + 1) % _length;
+    _waveform[prev] = 0.995*((_waveform[prev] + _waveform[_cursor]) / 2);
+    return current;
 }
 
 /* * * * * Test Cases Below This Point * * * * */
@@ -214,7 +246,7 @@ PROVIDED_TEST("Milestone 4: nextSample wraps around properly.") {
     EXPECT_EQUAL(instrument._waveform[1], 0.995 * (decayedTerm + moreDecayed) / 2.0);
 }
 
-STUDENT_TEST("Constructor rounds array length down") {
+STUDENT_TEST("Milestone 2: Constructor rounds array length down") {
     AudioSystem::setSampleRate(8000);
 
     StringInstrument instrument(3000);
@@ -222,10 +254,94 @@ STUDENT_TEST("Constructor rounds array length down") {
     EXPECT_EQUAL(instrument._length, 2);
 }
 
-STUDENT_TEST("Destructor frees allocated memory") {
+STUDENT_TEST("Milestone 2: Destructor frees allocated memory") {
     StringInstrument* instrument = new StringInstrument(1000);
 
     delete instrument;
+}
+
+STUDENT_TEST("Milestone 3: Pluck handles odd-length waveform") {
+    AudioSystem::setSampleRate(10);
+
+    // 10 / 2 = 5 samples
+    StringInstrument instrument(2);
+    EXPECT_EQUAL(instrument._length, 5);
+
+    instrument.pluck();
+
+    EXPECT_EQUAL(instrument._waveform[0], 0.05);
+    EXPECT_EQUAL(instrument._waveform[1], 0.05);
+    EXPECT_EQUAL(instrument._waveform[2], -0.05);
+    EXPECT_EQUAL(instrument._waveform[3], -0.05);
+    EXPECT_EQUAL(instrument._waveform[4], -0.05);
+}
+
+STUDENT_TEST("Milestone 3: Plucking multiple times resets waveform") {
+    AudioSystem::setSampleRate(8);
+
+    StringInstrument instrument(1);
+    instrument.pluck();
+
+    // Change some values to simulate a previously modified waveform.
+    instrument._waveform[0] = 0.25;
+    instrument._waveform[7] = 0.25;
+
+    instrument.pluck();
+
+    EXPECT_EQUAL(instrument._waveform[0], 0.05);
+    EXPECT_EQUAL(instrument._waveform[1], 0.05);
+    EXPECT_EQUAL(instrument._waveform[2], 0.05);
+    EXPECT_EQUAL(instrument._waveform[3], 0.05);
+    EXPECT_EQUAL(instrument._waveform[4], -0.05);
+    EXPECT_EQUAL(instrument._waveform[5], -0.05);
+    EXPECT_EQUAL(instrument._waveform[6], -0.05);
+    EXPECT_EQUAL(instrument._waveform[7], -0.05);
+}
+
+STUDENT_TEST("Milestone 4: nextSample progressively dampens waveform") {
+    AudioSystem::setSampleRate(4);
+
+    StringInstrument instrument(1);
+    instrument.pluck();
+
+    // First cycle through the waveform.
+    for (int i = 0; i < 4; i++) {
+        instrument.nextSample();
+    }
+
+    Sample firstValue = instrument._waveform[0];
+
+    // Second cycle through the waveform.
+    for (int i = 0; i < 4; i++) {
+        instrument.nextSample();
+    }
+
+    Sample secondValue = instrument._waveform[0];
+
+    EXPECT_LESS_THAN(secondValue, firstValue);
+    EXPECT_GREATER_THAN(secondValue, 0);
+}
+
+STUDENT_TEST("Milestone 4: nextSample advances cursor correctly") {
+    AudioSystem::setSampleRate(5);
+
+    StringInstrument instrument(1);
+
+    instrument.pluck();
+
+    EXPECT_EQUAL(instrument._cursor, 0);
+
+    instrument.nextSample();
+    EXPECT_EQUAL(instrument._cursor, 1);
+
+    instrument.nextSample();
+    EXPECT_EQUAL(instrument._cursor, 2);
+
+    instrument.nextSample();
+    EXPECT_EQUAL(instrument._cursor, 3);
+
+    instrument.nextSample();
+    EXPECT_EQUAL(instrument._cursor, 4);
 }
 
 /* * * * * Special Functions Below This Point * * * * */

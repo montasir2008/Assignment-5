@@ -1,3 +1,12 @@
+/*
+ * File: ToneMatrix.h
+ * --------------------
+ * Name: Montasir Mahir & Weija Li
+ * Course: CS106B
+ * Section: Thu 7:30 pm
+ * Description: This file is the prototype for the toneMatrix class as it holds
+ * fucntion prototypes and member variables.
+ */
 #pragma once
 
 #include "Demos/Sample.h"
@@ -51,6 +60,10 @@ private:
     int _lightSize;
     bool* _grid = nullptr;
     StringInstrument* _instruments = nullptr;
+
+    bool _lastChange = false; //Added member variable to track mousePressed for dragging.
+    int _currCol = 0; // Tracks left-right sweeping
+    int _sampleCalls = 0; //tracks number of calls for sweep
 
     /* Friendly reminder to follow the convention of adding an underscore
      * in front of any private member variables you declare!

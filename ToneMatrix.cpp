@@ -1,3 +1,14 @@
+/*
+ * File: ToneMatrix.cpp
+ * --------------------
+ * Name: Montasir Mahir & Weija Li
+ * Course: CS106B
+ * Section: Thu 7:30 pm
+ * Description: This file implements a Tone Matrix, a grid of lights where
+ * each row is a string instrument and each column is a moment in time.
+ * It handles toggling lights with the mouse, drawing the grid, generating
+ * audio samples as the sweep moves left to right, and resizing the grid.
+ */
 #include "ToneMatrix.h"
 #include "Demos/DrawRectangle.h"
 #include <cmath>
@@ -13,7 +24,7 @@ const Color kLightOnColor (250, 250, 100);
  * For those of you who are musically inclined: the base frequency is
  * chosen to be a low C. The remaining notes are then repeated major
  * pentatonic scales stacked on top. To see why, note that one half step
- * corresponds to multiplying the frequency by the twelfth root of two.
+ * corresponds to multiplying the frequency by the twelfth root of two.k
  * Therefore, multiplying a frequency by pow(2, n / 12.0) corresponds
  * to taking the note n half-steps above the base frequency.
  *
@@ -48,50 +59,141 @@ double frequencyForRow(int rowIndex) {
     return kBaseFrequency * pow(2.0, halfSteps / 12.0);
 }
 
+/*
+ * This constructor creates a gridSize x gridSize grid of lights that are
+ * all off, and one string instrument per row. Each instrument is tuned
+ * using frequencyForRow.
+ */
 ToneMatrix::ToneMatrix(int gridSize, int lightSize) {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    (void) gridSize;
-    (void) lightSize;
+    _gridSize = gridSize;
+    _lightSize = lightSize;
+    _grid = new bool[_gridSize * _gridSize]();
+    _instruments = new StringInstrument[_gridSize];
+
+    for (int i = 0; i < _gridSize; i++) {
+        _instruments[i] = StringInstrument(frequencyForRow(i));
+    }
 }
 
+/*
+ * This destructor frees the dynamically allocated light grid and
+ * instrument array.
+ */
 ToneMatrix::~ToneMatrix() {
-    /* TODO: Delete this comment and implement this function. */
+    delete[] _grid;
+    delete[] _instruments;
 }
 
+/*
+ * This function toggles the light under the mouse and remembers the new
+ * state (on or off) so that dragging can apply the same state to other lights.
+ * Dividing the pixel coordinates by the light size gives the row and column.
+ */
 void ToneMatrix::mousePressed(int mouseX, int mouseY) {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    (void) mouseX;
-    (void) mouseY;
+    int row = mouseY/_lightSize;
+    int col = mouseX/_lightSize;
+    _lastChange = !_grid[row * _gridSize + col];
+    _grid[row * _gridSize + col] = _lastChange;
 }
 
+/*
+ * This function sets the light under the mouse to whatever state the last
+ * click produced, rather than toggling it. This lets the user drag across
+ * many lights to turn them all on or all off.
+ */
 void ToneMatrix::mouseDragged(int mouseX, int mouseY) {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    (void) mouseX;
-    (void) mouseY;
+    int row = mouseY/_lightSize;
+    int col = mouseX/_lightSize;
+    _grid[row * _gridSize + col] = _lastChange;
 }
 
+/*
+ * This function draws every light as a square, row by row. It tracks the
+ * top-left corner of the current square, moving right after each light
+ * and back to the left edge (one row down) when a row finishes.
+ */
 void ToneMatrix::draw() const {
-    /* TODO: Delete this comment and implement this function. */
+    int currX = 0;
+    int currY = 0;
+    for (int i = 0; i < _gridSize * _gridSize; i++) {
+        Rectangle newRect = {currX, currY, _lightSize, _lightSize};
+        Color rectColor = kLightOffColor;
+        if (_grid[i]) rectColor = kLightOnColor;
+        drawRectangle(newRect, rectColor);
+
+        int currRow = (i - i%_gridSize) & _gridSize;
+        int j = i + 1;
+        int nextRow = (j - j%_gridSize) & _gridSize;
+
+        if (nextRow != currRow) {
+            currX = 0;
+            currY += _lightSize;
+        }
+        else currX += _lightSize;
+    }
 }
 
+/*
+ * This function produces the next audio sample. On the first call for each
+ * column, it plucks every instrument whose light is on in that column. It
+ * then adds up the next sample from every instrument. After 8192 calls, it
+ * moves to the next column, wrapping back to the first column at the end.
+ */
 Sample ToneMatrix::nextSample() {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    return 0;
+    Sample result = 0;
+    _sampleCalls++;
+    for (int i = 0; i < _gridSize; i++) {
+        if (_grid[i*_gridSize + _currCol] == true && _sampleCalls == 1) {
+            _instruments[i].pluck();
+        }
+        result += _instruments[i].nextSample();
+    }
+
+    if (_sampleCalls == 8192) {
+        _sampleCalls = 0;
+        _currCol = (_currCol + 1) % _gridSize;
+    }
+
+    return result;
 }
 
+/*
+ * This function changes the grid to newGridSize x newGridSize. Existing
+ * instruments and lights that still fit are copied over, new rows get new
+ * instruments, and anything that no longer fits is dropped. The old arrays
+ * are freed and the left-to-right sweep restarts at the first column.
+ */
 void ToneMatrix::resize(int newGridSize) {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    (void) newGridSize;
+    if (newGridSize <= 0) error("Invalid new grid size");
+    StringInstrument* newInstruments = new StringInstrument[newGridSize];
+
+    for (int i = 0; i < newGridSize; i++) {
+        if (i < _gridSize) {
+            newInstruments[i] = _instruments[i];
+        }
+        else newInstruments[i] = StringInstrument(frequencyForRow(i));
+    }
+
+    delete [] _instruments;
+    _instruments = newInstruments;
+
+    bool* newGrid = new bool[newGridSize * newGridSize]();
+
+    for (int i = 0; i < newGridSize; i++) {
+        for (int j = 0; j < newGridSize; j++) {
+            if (j < _gridSize && i < _gridSize) {
+                newGrid[i * newGridSize + j] = _grid[i * _gridSize + j];
+            }
+        }
+    }
+
+    delete [] _grid;
+    _grid = newGrid;
+
+    _gridSize = newGridSize;
+
+    _currCol = 0;
+    _sampleCalls = 0;
 }
 
 /* * * * * Test Cases Below This Point * * * * */
@@ -1203,4 +1305,95 @@ PROVIDED_TEST("Milestone 5: resize() resets the left-to-right sweep.") {
     /* The next one, though, should trigger something. */
     double result = matrix.nextSample();
     EXPECT_GREATER_THAN(result, 0);
+}
+
+STUDENT_TEST("mousePressed toggles lights and remembers the new state") {
+    ToneMatrix matrix(4, 2);
+
+    // Initially, all lights should be off.
+    EXPECT_EQUAL(matrix._grid[0], false);
+
+    // Click the top-left light.
+    matrix.mousePressed(1, 1);
+
+    EXPECT_EQUAL(matrix._grid[0], true);
+    EXPECT_EQUAL(matrix._lastChange, true);
+
+    // Click it again to turn it off.
+    matrix.mousePressed(1, 1);
+
+    EXPECT_EQUAL(matrix._grid[0], false);
+    EXPECT_EQUAL(matrix._lastChange, false);
+}
+
+STUDENT_TEST("mouseDragged sets lights to the last clicked state") {
+    ToneMatrix matrix(4, 2);
+
+    // Click the first light, turning it on.
+    matrix.mousePressed(1, 1);
+
+    // Drag to the next light.
+    matrix.mouseDragged(3, 1);
+    EXPECT_EQUAL(matrix._grid[1], true);
+
+    // Drag to another light.
+    matrix.mouseDragged(1, 3);
+    EXPECT_EQUAL(matrix._grid[4], true);
+
+    // Drag back to the first light. It should remain on.
+    matrix.mouseDragged(1, 1);
+    EXPECT_EQUAL(matrix._grid[0], true);
+
+    // Click the first light again, turning it off.
+    matrix.mousePressed(1, 1);
+
+    // Drag to another light. It should now turn off.
+    matrix.mouseDragged(3, 1);
+    EXPECT_EQUAL(matrix._grid[1], false);
+}
+
+STUDENT_TEST("ToneMatrix initializes sequencing variables") {
+    AudioSystem::setSampleRate(44100);
+
+    ToneMatrix matrix(4, 2);
+
+    EXPECT_EQUAL(matrix._currCol, 0);
+    EXPECT_EQUAL(matrix._sampleCalls, 0);
+}
+
+STUDENT_TEST("ToneMatrix advances columns at the correct interval") {
+    AudioSystem::setSampleRate(44100);
+    ToneMatrix matrix(4, 2);
+
+    // Turn on row 0, column 0.
+    matrix.mousePressed(1, 1);
+
+    // Turn on row 1, column 1.
+    matrix.mousePressed(3, 3);
+
+    // First call: pluck column 0.
+    matrix.nextSample();
+
+    EXPECT_EQUAL(matrix._currCol, 0);
+    EXPECT_EQUAL(matrix._sampleCalls, 1);
+
+    // Calls 2 through 8191.
+    for (int i = 0; i < 8190; i++) {
+        matrix.nextSample();
+    }
+
+    EXPECT_EQUAL(matrix._currCol, 0);
+    EXPECT_EQUAL(matrix._sampleCalls, 8191);
+
+    // Call 8192: advance to column 1.
+    matrix.nextSample();
+
+    EXPECT_EQUAL(matrix._currCol, 1);
+    EXPECT_EQUAL(matrix._sampleCalls, 0);
+
+    // Call 8193: pluck column 1.
+    matrix.nextSample();
+
+    EXPECT_EQUAL(matrix._currCol, 1);
+    EXPECT_EQUAL(matrix._sampleCalls, 1);
 }
