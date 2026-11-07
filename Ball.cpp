@@ -63,7 +63,7 @@ void Ball::move() {
  * balls will bounce.
  */
 void bounceBalls(int numBalls, int numSteps, const Rectangle& bounceBounds) {
-    // setRandomSeed(<your number here>);
+    setRandomSeed(23);
 
     /* Create a bunch of balls, stashing them in a Vector for later. */
     Vector<Ball> allBalls;

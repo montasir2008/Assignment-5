@@ -4,18 +4,22 @@
 using namespace std;
 
 StringInstrument::StringInstrument(double frequency) {
-    /* TODO: Delete this comment and the lines below it, then
-     * implement this function.
-     */
-    (void) frequency;
+    if (frequency <= 0 || AudioSystem::sampleRate() / frequency <= 1) error("The frequency is invalid");
+    _length = AudioSystem::sampleRate() / frequency;
+    _waveform = new Sample[_length]();
+    _cursor = 0;
 }
 
 StringInstrument::~StringInstrument() {
-    /* TODO: Delete this comment, then implement this function. */
+    delete[] _waveform;
 }
 
 void StringInstrument::pluck() {
-    /* TODO: Delete this comment, then implement this function. */
+    for (int i = 0; i < _length; i++) {
+        if (i < _length/2) _waveform[i] = 0.05;
+        else _waveform[i] = -0.05;
+    }
+    _cursor = 0;
 }
 
 Sample StringInstrument::nextSample() {
@@ -208,6 +212,20 @@ PROVIDED_TEST("Milestone 4: nextSample wraps around properly.") {
      * scaled by 0.995.
      */
     EXPECT_EQUAL(instrument._waveform[1], 0.995 * (decayedTerm + moreDecayed) / 2.0);
+}
+
+STUDENT_TEST("Constructor rounds array length down") {
+    AudioSystem::setSampleRate(8000);
+
+    StringInstrument instrument(3000);
+
+    EXPECT_EQUAL(instrument._length, 2);
+}
+
+STUDENT_TEST("Destructor frees allocated memory") {
+    StringInstrument* instrument = new StringInstrument(1000);
+
+    delete instrument;
 }
 
 /* * * * * Special Functions Below This Point * * * * */

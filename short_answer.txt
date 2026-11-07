@@ -1,34 +1,28 @@
-Q1:
+Q1: The id of the ball never changes after each iteration. The values of _x and _y change after every iteration by however much the respective velocities are. For ball 0, the id remains 0
+but the _x decreases by 4 while the _y stays constant since _vy is 0.
 
 
+Q2: My stuck ball is in the bottom edge of the rectangle. It seems to be always registering as bouncing. As a result, the _vy keeps alternating between
+-2 and 2 while the _vx is constant and _x changes by that amount. Since _vy keeps switching back and forth, the y value keeps hovering around 2 values.
+That is whats causing the visual notion that the ball is stuck. For a regular ball, the velocity does not keep changing that often.
+
+Q3: The ball behaves normally for me and is moving with the velocity it had before I forcibly moved it.
 
 
-Q2:
+Q4: The consequence for accessing an index outside of the allocated bounds is that the test case is paused and I recieve this error, "Test failed due to the program triggering an exception."
+However, it does not say that the accessing is what caused it. For deleting the same memory twice, nothing happens and I recieve no error. When I access memory after it has been deleted, the value of
+the memory has not change because of how immediate I access it. This might not be the case for other situations.
 
 
+Q5: When the waveform array is first created, all of its elements are initialized to 0. When the instrument is plucked, the first half of the array is filled with +0.05 and the second half with -0.05.
+In this case, the array size is 8.
 
+Q6: After calling nextSample four times, the waveform array contains:
 
-Q3:
+[0.04975, 0.04975, 0.04975, 0, -0.05, -0.05, -0.05, -0.05]
 
-
-
-
-Q4:
-
-
-
-
-Q5:
-
-
-
-
-Q6:
-
-
-
-
-Q7:
+Q7: This would increase the amplitude by 5 times while keeping the frequency and shape of the wave unchanged.
+As a result, the sound would be louder, but the pitch is the same.
 
 
 
